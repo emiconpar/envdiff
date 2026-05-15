@@ -67,6 +67,12 @@ def test_redact_env_custom_patterns():
     assert result["OTHER"] == "data"
 
 
+def test_redact_env_empty_dict():
+    """Redacting an empty environment should return an empty dict."""
+    result = redact_env({})
+    assert result == {}
+
+
 def test_redact_keys_masks_specified_keys(sample_env):
     result = redact_keys(sample_env, ["HOST", "PORT"])
     assert result["HOST"] == DEFAULT_MASK
@@ -77,6 +83,13 @@ def test_redact_keys_masks_specified_keys(sample_env):
 def test_redact_keys_empty_list_unchanged(sample_env):
     result = redact_keys(sample_env, [])
     assert result == sample_env
+
+
+def test_redact_keys_ignores_missing_keys(sample_env):
+    """Keys not present in the env dict should be silently ignored."""
+    result = redact_keys(sample_env, ["HOST", "NONEXISTENT_KEY"])
+    assert result["HOST"] == DEFAULT_MASK
+    assert "NONEXISTENT_KEY" not in result
 
 
 def test_sensitive_keys_returns_matching(sample_env):
@@ -97,3 +110,8 @@ def test_sensitive_keys_custom_patterns():
     env = {"MY_FLAG": "1", "SAFE": "ok"}
     keys = sensitive_keys(env, patterns=[r"(?i)flag"])
     assert keys == ["MY_FLAG"]
+
+
+def test_sensitive_keys_empty_dict():
+    """sensitive_keys on an empty env should return an empty list."""
+    assert sensitive_keys({}) == []

@@ -65,3 +65,13 @@ def test_parse_env_file_not_found():
 def test_parse_env_string_no_variables():
     result = parse_env_string("# just a comment\n\n")
     assert result == {}
+
+
+def test_parse_env_string_inline_comment_not_stripped():
+    """Values containing a hash character should be preserved as-is.
+
+    Only full-line comments (lines starting with #) are ignored; inline
+    content after a hash is part of the value and must not be removed.
+    """
+    result = parse_env_string("DESCRIPTION=hello#world\n")
+    assert result["DESCRIPTION"] == "hello#world"

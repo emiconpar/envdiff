@@ -64,3 +64,14 @@ def test_interpolate_with_external_context():
     env = parse_env_string("GREETING=Hello $NAME")
     result = interpolate_env(env, context={"NAME": "envdiff"})
     assert result["GREETING"] == "Hello envdiff"
+
+
+def test_interpolate_chained_references():
+    """Test that interpolation resolves multi-level chained variable references."""
+    raw = "A=foo\nB=${A}/bar\nC=${B}/baz\n"
+    env = parse_env_string(raw)
+    result = interpolate_env(env)
+    assert result["B"] == "foo/bar"
+    assert result["C"] == "foo/bar/baz"
+    unresolved = find_unresolved(env)
+    assert unresolved == {}

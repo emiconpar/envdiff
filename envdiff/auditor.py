@@ -22,6 +22,22 @@ class AuditResult:
     def passed(self) -> bool:
         return not self.forbidden_found and not self.missing_required and not self.plain_secrets
 
+    def summary(self) -> str:
+        """Return a human-readable summary of the audit result."""
+        if self.passed:
+            return f"[{self.label}] PASSED — no issues found."
+        lines = [f"[{self.label}] FAILED"]
+        if self.forbidden_found:
+            lines.append(f"  Forbidden keys: {', '.join(self.forbidden_found)}")
+        if self.missing_required:
+            lines.append(f"  Missing required keys: {', '.join(self.missing_required)}")
+        if self.plain_secrets:
+            lines.append(f"  Possible plain-text secrets: {', '.join(self.plain_secrets)}")
+        if self.warnings:
+            for w in self.warnings:
+                lines.append(f"  Warning: {w}")
+        return "\n".join(lines)
+
 
 def _looks_like_plain_secret(key: str, value: str) -> bool:
     """Heuristic: secret-like key with a short, non-placeholder value."""

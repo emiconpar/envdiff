@@ -30,42 +30,56 @@ def prod():
     return parse_env_string(PROD_ENV)
 
 
-def test_parse_then_diff_detects_added(dev, prod):
-    diff = build_side_by_side(dev, prod)
+@pytest.fixture
+def diff(dev, prod):
+    """Pre-built side-by-side diff used by multiple tests."""
+    return build_side_by_side(dev, prod, left_label="dev", right_label="prod")
+
+
+def test_parse_then_diff_detects_added(diff):
     assert any(r.key == "SENTRY_DSN" for r in diff.added())
 
 
-def test_parse_then_diff_detects_removed(dev, prod):
-    diff = build_side_by_side(dev, prod)
+def test_parse_then_diff_detects_removed(diff):
     assert any(r.key == "DEBUG" for r in diff.removed())
 
 
-def test_parse_then_diff_detects_changed_host(dev, prod):
-    diff = build_side_by_side(dev, prod)
+def test_parse_then_diff_detects_changed_host(diff):
     changed_keys = [r.key for r in diff.changed()]
     assert "APP_HOST" in changed_keys
 
 
-def test_parse_then_diff_port_changed(dev, prod):
-    diff = build_side_by_side(dev, prod)
+def test_parse_then_diff_port_changed(diff):
     row = next(r for r in diff.changed() if r.key == "APP_PORT")
     assert row.left_value == "8080"
     assert row.right_value == "443"
 
 
-def test_full_pipeline_format_output(dev, prod):
-    diff = build_side_by_side(dev, prod, left_label="dev", right_label="prod")
+def test_full_pipeline_format_output(diff):
     output = format_side_by_side(diff, color=False)
     assert "APP_HOST" in output
     assert "dev" in output
     assert "prod" in output
 
 
-def test_summary_integration(dev, prod):
-    diff = build_side_by_side(dev, prod, left_label="dev", right_label="prod")
+def test_summary_integration(diff):
     summary = side_by_side_summary(diff)
     assert "dev" in summary
     assert "prod" in summary
     # 1 added (SENTRY_DSN), 1 removed (DEBUG), 3 changed
     assert "+1" in summary
     assert "-1" in summary
+
+
+def test_unchanged_keys_not_in_changed_or_added_or_removed(diff):
+    """Keys present with the same value in both envs must not appear in any diff bucket."""
+    all_diff_keys = (
+        {r.key for r in diff.added()}
+        | {r.key for r in diff.removed()}
+        | {r.key for r in diff.changed()}
+    )
+    # DB_URL differs, so only keys that are truly identical should be absent
+    for row in diff.unchanged():
+        assert row.key not in all_diff_keys, (
+            f"{row.key!r} appears in both unchanged and a diff bucket"
+        )
